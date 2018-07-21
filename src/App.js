@@ -2,7 +2,7 @@
 /// For more information: https://en.wikipedia.org/wiki/Maze_generation_algorithm#Recursive_backtracker
 import React, { Component } from 'react';
 import P5Wrapper from 'react-p5-wrapper';
-import * as R from 'ramda';
+import { compose, filter, forEach, map, range, reverse, xprod } from 'ramda';
 
 const sketch = function(p) {
   // TODO: expose these as props and have a ui to manipulate them?
@@ -12,60 +12,63 @@ const sketch = function(p) {
   const COLS = 20;
   const CELL_HEIGHT = Math.floor(HEIGHT / ROWS);
   const CELL_WIDTH = Math.floor(WIDTH / COLS);
-  const FPS = 30;
+  const FPS = 60;
 
   const createCell = (x, y) => ({
     x,
     y,
-    walls: {
-      top: true,
-      right: true,
-      bottom: true,
-      left: true
-    },
+    walls: { top: true, right: true, bottom: true, left: true },
     processed: false
   });
 
-  const renderCell = ({ x, y, walls, processed }) => {
-    const px = x * CELL_WIDTH;
-    const py = y * CELL_HEIGHT;
+  const createGrid = compose(
+    map(arr => createCell(...arr)),
+    map(reverse),
+    (rowCount, colCount) => xprod(range(0, rowCount), range(0, colCount))
+  );
 
-    p.fill(processed ? 101 : 51);
+  const createState = (rows, cols) => {
+    const grid = createGrid(rows, cols);
+    return {
+      grid,
+      activeCell: grid[0],
+      cellStack: [],
+      mazeComplete: false
+    };
+  };
+
+  const renderLine = (x1, y1, x2, y2, color = 255) => {
+    p.stroke(color);
+    p.line(x1 * CELL_WIDTH, y1 * CELL_HEIGHT, x2 * CELL_WIDTH, y2 * CELL_HEIGHT);
+  };
+
+  const renderRect = (x, y, color = 255) => {
+    p.fill(color);
     p.noStroke();
     p.rect(x * CELL_WIDTH, y * CELL_HEIGHT, CELL_WIDTH, CELL_HEIGHT);
+  };
 
-    p.stroke(255);
+  const renderCell = ({ x, y, walls, processed }) => {
+    renderRect(x, y, p.color(processed ? 101 : 51));
     if (walls.top) {
-      p.line(px, py, px + CELL_WIDTH, py);
+      renderLine(x, y, x + 1, y);
     }
     if (walls.right) {
-      p.line(px + CELL_WIDTH, py, px + CELL_WIDTH, py + CELL_HEIGHT);
+      renderLine(x + 1, y, x + 1, y + 1);
     }
     if (walls.bottom) {
-      p.line(px, py + CELL_HEIGHT, px + CELL_WIDTH, py + CELL_HEIGHT);
+      renderLine(x, y + 1, x + 1, y + 1);
     }
     if (walls.left) {
-      p.line(px, py, px, py + CELL_HEIGHT);
+      renderLine(x, y, x, y + 1);
     }
   };
 
-  const renderGrid = grid => {
-    grid.forEach(renderCell);
-  };
+  const renderCellStack = forEach(({ x, y }) => renderRect(x, y, p.color(150, 0, 150)));
 
-  const renderCellStack = cellStack => {
-    p.fill(150, 0, 150);
-    cellStack.forEach(({ x, y }) => {
-      p.noStroke();
-      p.rect(x * CELL_WIDTH, y * CELL_HEIGHT, CELL_WIDTH - 1, CELL_HEIGHT - 1);
-    });
-  };
+  const renderActiveCell = ({ x, y }) => renderRect(x, y, p.color(0, 255, 0));
 
-  const renderActiveCell = ({ x, y }) => {
-    p.fill(0, 255, 0);
-    p.noStroke();
-    p.rect(x * CELL_WIDTH, y * CELL_HEIGHT, CELL_WIDTH - 1, CELL_HEIGHT - 1);
-  };
+  const renderGrid = forEach(renderCell);
 
   const renderState = ({ grid, activeCell, cellStack }) => {
     renderGrid(grid);
@@ -75,17 +78,20 @@ const sketch = function(p) {
 
   const updateState = state => {
     const getValidNeighors = cell => {
+      const neighborVecs = map(arr => p.createVector(...arr), [[-1, 0], [0, -1], [1, 0], [0, 1]]);
       const isInBounds = ({ x, y }) => x >= 0 && x < COLS && y >= 0 && y < ROWS;
-      const isNotProcessed = ({ processed }) => !processed;
       const getCell = ({ x, y }) => state.grid[y * COLS + x];
-      const neighborVecs = [[-1, 0], [0, -1], [1, 0], [0, 1]];
+      const isNotProcessed = ({ processed }) => !processed;
+      const unprocessedNeighborCells = compose(
+        filter(isNotProcessed),
+        map(getCell),
+        filter(isInBounds),
+        map(vec => vec.add(cell.x, cell.y))
+      )(neighborVecs);
 
-      return neighborVecs
-        .map(arr => p.createVector(...arr).add(cell.x, cell.y))
-        .filter(isInBounds)
-        .map(getCell)
-        .filter(isNotProcessed);
+      return unprocessedNeighborCells;
     };
+
     const removeWallBetween = (cell, neighbor) => {
       const xDiff = neighbor.x - cell.x;
       const yDiff = neighbor.y - cell.y;
@@ -108,7 +114,7 @@ const sketch = function(p) {
       }
     };
 
-    const randomNeighbor = R.compose(
+    const randomNeighbor = compose(
       p.random,
       getValidNeighors
     )(state.activeCell);
@@ -126,22 +132,6 @@ const sketch = function(p) {
         state.mazeComplete = true;
       }
     }
-  };
-
-  const createGrid = (rowCount, colCount) => {
-    return R.flatten(
-      R.range(0, rowCount).map(y => R.range(0, colCount).map(x => createCell(x, y)))
-    );
-  };
-
-  const createState = (rows, cols) => {
-    const grid = createGrid(rows, cols);
-    return {
-      grid,
-      activeCell: grid[0],
-      cellStack: [],
-      mazeComplete: false
-    };
   };
 
   let state = createState(ROWS, COLS);
