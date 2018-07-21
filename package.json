@@ -2,6 +2,7 @@
   "name": "int-and-learning",
   "version": "0.1.0",
   "private": true,
+  "homepage": "https://nickmyers217.github.io/maze_generator/",
   "dependencies": {
     "gh-pages": "^1.2.0",
     "ramda": "^0.25.0",
