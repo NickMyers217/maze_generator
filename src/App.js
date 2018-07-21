@@ -1,8 +1,11 @@
+/// An implementation of the recursive batcktracker maze generation alrgorithm
+/// For more information: https://en.wikipedia.org/wiki/Maze_generation_algorithm#Recursive_backtracker
 import React, { Component } from 'react';
 import P5Wrapper from 'react-p5-wrapper';
 import * as R from 'ramda';
 
 const sketch = function(p) {
+  // TODO: expose these as props and have a ui to manipulate them?
   const WIDTH = 600;
   const HEIGHT = 600;
   const ROWS = 20;
