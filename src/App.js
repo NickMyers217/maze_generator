@@ -14,6 +14,13 @@ const sketch = function(p) {
   const CELL_WIDTH = Math.floor(WIDTH / COLS);
   const FPS = 60;
 
+  /**
+   * Creates a cell with an x, y coordinate on a grid
+   *
+   * @param {Number} x The x coordinate in grid space
+   * @param {Number} y The y coordinate in grid space
+   * @returns {Object} A cell object
+   */
   const createCell = (x, y) => ({
     x,
     y,
@@ -21,12 +28,26 @@ const sketch = function(p) {
     processed: false
   });
 
+  /**
+   * Creates a grid with a certain number of rows and columns
+   *
+   * @param {Number} rowCount The number of rows on the grid
+   * @param {Number} colCount The number of cols on the grid
+   * @returns {Object[]} A grid of cell objects
+   */
   const createGrid = compose(
     map(arr => createCell(...arr)),
     map(reverse),
     (rowCount, colCount) => xprod(range(0, rowCount), range(0, colCount))
   );
 
+  /**
+   * Initializes the default state for the simulation
+   *
+   * @param {Number} rows Number of rows in the grid
+   * @param {Number} cols Number of cols in the grid
+   * @returns {Object} The default state
+   */
   const createState = (rows, cols) => {
     const grid = createGrid(rows, cols);
     return {
@@ -37,17 +58,38 @@ const sketch = function(p) {
     };
   };
 
+  /**
+   * Draws a line from (x1, y1) to (x2, y2) with a certain color
+   *
+   * @param {Number} x1
+   * @param {Number} y1
+   * @param {Number} x2
+   * @param {Number} y2
+   * @param {(Number|Object)} [color=255]
+   */
   const renderLine = (x1, y1, x2, y2, color = 255) => {
     p.stroke(color);
     p.line(x1 * CELL_WIDTH, y1 * CELL_HEIGHT, x2 * CELL_WIDTH, y2 * CELL_HEIGHT);
   };
 
+  /**
+   * Draws an (x, y) grid space coordinate as a rectangle in pixel space with a certain color
+   *
+   * @param {Number} x
+   * @param {Number} y
+   * @param {(Number|Object)} [color=255]
+   */
   const renderRect = (x, y, color = 255) => {
     p.fill(color);
     p.noStroke();
     p.rect(x * CELL_WIDTH, y * CELL_HEIGHT, CELL_WIDTH, CELL_HEIGHT);
   };
 
+  /**
+   * Draws a cell
+   *
+   * @param {Object} cell The cell object you want to render
+   */
   const renderCell = ({ x, y, walls, processed }) => {
     renderRect(x, y, p.color(processed ? 101 : 51));
     if (walls.top) {
@@ -64,18 +106,45 @@ const sketch = function(p) {
     }
   };
 
+  /**
+   * Highlights all the cells in the stack with a purple color
+   *
+   * @param {Object[]} cellStack
+   */
   const renderCellStack = forEach(({ x, y }) => renderRect(x, y, p.color(150, 0, 150)));
 
+  /**
+   * Highlights the activeCell green
+   *
+   * @param {Object} activeCell
+   */
   const renderActiveCell = ({ x, y }) => renderRect(x, y, p.color(0, 255, 0));
 
+  /**
+   * Renders the entire grid
+   *
+   * @param {Object[][]} grid
+   */
   const renderGrid = forEach(renderCell);
 
+  /**
+   * Renders the entire state
+   *
+   * @param {Object} state
+   */
   const renderState = ({ grid, activeCell, cellStack }) => {
     renderGrid(grid);
     renderActiveCell(activeCell);
     renderCellStack(cellStack);
   };
 
+  /**
+   * Updates the state one step in the simulation
+   *
+   * NOTE: state is passed by reference and will be mutated
+   *
+   * @param {Object} state
+   */
   const updateState = state => {
     const getValidNeighors = cell => {
       const neighborVecs = map(arr => p.createVector(...arr), [[-1, 0], [0, -1], [1, 0], [0, 1]]);
@@ -134,16 +203,20 @@ const sketch = function(p) {
     }
   };
 
+  // The state of the simulation
   let state = createState(ROWS, COLS);
 
+  // P5.js sketch setup function
   p.setup = () => {
     p.createCanvas(WIDTH, HEIGHT);
     p.frameRate(FPS);
     p.background('#999999');
   };
 
+  // Redraws the sketch on new props
   p.myCustomRedrawAccordingToNewPropsHandler = props => {};
 
+  // P5.js draw function
   p.draw = () => {
     if (state.mazeComplete) {
       p.noLoop();
@@ -151,7 +224,6 @@ const sketch = function(p) {
       updateState(state);
     }
 
-    p.clear();
     renderState(state);
   };
 };
